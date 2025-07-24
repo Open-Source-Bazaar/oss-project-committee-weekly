@@ -1,0 +1,8 @@
+{
+  "recommendations": [
+    "justjavac.vscode-deno-extensionpack",
+    "redhat.vscode-yaml",
+    "ms-azuretools.vscode-docker",
+    "GitHub.copilot"
+  ]
+}
