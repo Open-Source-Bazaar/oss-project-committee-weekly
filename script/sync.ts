@@ -2,9 +2,9 @@ import { join } from "node:path";
 import { argv, exit } from "node:process";
 // @deno-types="npm:@types/fs-extra"
 import { outputFile } from "npm:fs-extra";
-import { LarkPageData } from "npm:mobx-lark";
+import { LarkPageData, LarkWiki } from "npm:mobx-lark@2.4.0-rc.0";
 
-import { larkApp, LarkWiki, traverseWiki } from "./utility.ts";
+import { larkApp, traverseWiki } from "./utility.ts";
 
 const [domain, spaceName, targetFolder = "document"] = argv.slice(2);
 
