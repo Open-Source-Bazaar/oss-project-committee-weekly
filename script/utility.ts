@@ -1,17 +1,27 @@
 /// <reference types="npm:@types/node" />
 
-import { join } from "node:path";
 import { env } from "node:process";
-import MobxLark, { LarkWikiNode } from "npm:mobx-lark@2.4.0-rc.0";
+// @deno-types="npm:@types/fs-extra"
+import { outputFile } from "npm:fs-extra";
+import MobxLark, { LarkPageData, Wiki } from "npm:mobx-lark@2.4.0-rc.5";
 // @deno-types="npm:@types/react-dom/server"
 import { renderToStaticMarkup } from "npm:react-dom/server";
-// @deno-types="npm:@types/turndown"
-import TurnDown from "npm:turndown";
+
+import { turndown } from "./parser.ts";
 
 const id = env.LARK_APP_ID!,
   secret = env.LARK_APP_SECRET!;
 
 export const larkApp = new MobxLark.LarkApp({ id, secret });
+
+export async function findWiki(spaceName: string) {
+  const { body: spaceBody } = await larkApp.client.get<LarkPageData<Wiki>>(
+    "wiki/v2/spaces?page_size=50"
+  );
+  return spaceBody?.data?.items.find(({ name }) =>
+    name.toLowerCase().includes(spaceName.toLowerCase())
+  );
+}
 
 export class MyWikiModel extends MobxLark.WikiModel {
   client = larkApp.client;
@@ -26,41 +36,43 @@ export class MyDocumentModel extends MobxLark.DocumentModel {
 }
 
 interface LarkWikiTraverseNode {
-  node: LarkWikiNode;
   titlePath: string;
   markdown: string;
 }
 
-const documentStore = new MyDocumentModel(),
-  turndown = new TurnDown();
+const documentStore = new MyDocumentModel();
 
 export async function docx2markdown(obj_token: string) {
   const blocks = await documentStore.getOneBlocks(obj_token);
+  try {
+    const { vDOM, files } = MobxLark.renderBlocks(blocks);
 
-  const { vDOM, files } = MobxLark.renderBlocks(blocks);
+    const markup = renderToStaticMarkup(vDOM);
 
-  const markup = renderToStaticMarkup(vDOM);
+    const markdown = turndown.turndown(markup);
 
-  const markdown = turndown.turndown(markup);
-
-  return { markdown, files };
+    return { markdown, files };
+  } catch (error) {
+    await outputFile(
+      `.cache/${obj_token}.json`,
+      JSON.stringify(blocks, null, 2)
+    );
+    throw error;
+  }
 }
 
 export async function* traverseWiki(
   domain: string,
-  space_id: string,
-  title_path = ""
+  space_id: string
 ): AsyncGenerator<LarkWikiTraverseNode> {
   const wikiNodeStore = new MyWikiNodeModel(domain, space_id);
 
-  const wikiNodes = await wikiNodeStore.getAll();
+  const nodeStream = wikiNodeStore.traverseTree();
 
-  for (const node of wikiNodes)
-    if (node.obj_type === "docx") {
-      const titlePath = join(title_path, node.title);
+  for await (const { obj_type, obj_token, title_path } of nodeStream)
+    if (obj_type === "docx") {
+      const { markdown, files } = await docx2markdown(obj_token);
 
-      const { markdown, files } = await docx2markdown(node.obj_token);
-
-      yield { node, titlePath, markdown };
+      yield { titlePath: title_path!, markdown };
     }
 }
