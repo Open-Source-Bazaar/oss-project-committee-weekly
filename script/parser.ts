@@ -1,8 +1,8 @@
 /// <reference lib="dom" />
 
 // @deno-types="npm:@types/turndown"
-import TurnDown from "npm:turndown";
-import { gfm } from 'npm:turndown-plugin-gfm';
+import TurnDown from "npm:@joplin/turndown";
+import { gfm } from "npm:@joplin/turndown-plugin-gfm";
 
 export const Empty_URL = /^(#+|javascript:.+)$/;
 
@@ -35,6 +35,6 @@ turndown
   .addRule("non_url", {
     filter: (node) =>
       ["a", "area"].includes(node.nodeName.toLowerCase()) &&
-      Empty_URL.test(node.getAttribute("href") + ''),
+      Empty_URL.test(node.getAttribute("href") + ""),
     replacement: () => "",
   });
