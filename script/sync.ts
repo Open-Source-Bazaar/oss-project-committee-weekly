@@ -2,9 +2,8 @@ import { join } from "node:path";
 import { argv, exit } from "node:process";
 // @deno-types="npm:@types/fs-extra"
 import { outputFile } from "npm:fs-extra";
-import { LarkPageData } from "npm:mobx-lark";
 
-import { larkApp, LarkWiki, traverseWiki } from "./utility.ts";
+import { larkApp, findWiki, traverseWiki } from "./utility.ts";
 
 const [domain, spaceName, targetFolder = "document"] = argv.slice(2);
 
@@ -12,12 +11,8 @@ console.time(spaceName);
 
 await larkApp.getAccessToken();
 
-const { body: spaceBody } = await larkApp.client.get<LarkPageData<LarkWiki>>(
-  "wiki/v2/spaces?page_size=50"
-);
-const space = spaceBody?.data?.items.find(({ name }) =>
-  name.toLowerCase().includes(spaceName.toLowerCase())
-);
+const space = await findWiki(spaceName);
+
 if (!space)
   throw new ReferenceError(`Space with name "${spaceName}" is not found`);
 
